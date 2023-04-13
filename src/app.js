@@ -23,27 +23,50 @@ mongoClient
 //Adiciona participante
 app.post("/participants", (req, res) => {
   const { name } = req.body;
-  let now = dayjs();
   db.collection("participants")
     .insertOne({ name, lastStatus: Date.now() })
-    .then(() => res.status(201))
     .catch((err) => console.log(err.message));
-  db.collection("messages").insertOne({
-    from: name,
-    to: "Todos",
-    text: "entra na sala...",
-    type: "status",
-    time: now.format("HH:mm:ss"),
-  }).then(() => res.status(201))
-  .catch((err) => console.log(err.message));
+  db.collection("messages")
+    .insertOne({
+      from: name,
+      to: "Todos",
+      text: "entra na sala...",
+      type: "status",
+      time: dayjs().format("HH:mm:ss"),
+    })
+    .catch((err) => console.log(err.message));
+  res.sendStatus(201);
 });
 
-//
+//Retorna participantes ativos
 app.get("/participants", (req, res) => {
   db.collection("participants")
     .find()
     .toArray()
     .then((participants) => res.status(200).send(participants))
+    .catch(res.status(500));
+});
+
+//Posta mensagem
+app.post("/messages", (req, res) => {
+  const { to, text, type } = req.body;
+  const userFrom = req.headers.user;
+  db.collection("messages").insertOne({
+    from: userFrom,
+    to,
+    text,
+    type,
+    time: dayjs().format("HH:mm:ss"),
+  })
+  res.send(userFrom);
+});
+
+//Retorna todas as mensagens
+app.get("/messages", (req, res) => {
+  db.collection("messages")
+    .find()
+    .toArray()
+    .then((messages) => res.status(200).send(messages))
     .catch(res.status(500));
 });
 
