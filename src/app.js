@@ -106,10 +106,11 @@ app.delete("/messages/:id", async (req, res)=>{
   const id = req.params.id;
   try {
     const deletedObj = await db.collection("messages").findOne({ _id: new ObjectId(id) });
+    if(!deletedObj) return res.sendStatus(404);
     if(deletedObj.from !== user) return res.sendStatus(401);
     const result = await db.collection("messages").deleteOne({ _id: new ObjectId(id) });
-    if(!result) return res.sendStatus(404);
-    res.sendStatus(200);
+    //if(!result) return res.sendStatus(404);
+    res.sendStatus(204);
   } catch (err) {
     console.log(err);
   }
@@ -127,9 +128,9 @@ app.put("/messages/:id", async (req, res)=>{
       .findOne({ name: user });
     if (!usuarioFrom) return res.sendStatus(422); //adicionar outras validaçṍes por joi
     const updateObj = await db.collection("messages").findOne({ _id: new ObjectId(id) });
+    if(!updateObj) return res.sendStatus(404);    
     if(updateObj.from !== user) return res.sendStatus(401);
     const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) },{ $set: userUpdate });
-    if(!result) return res.sendStatus(404);
     console.log(updateObj);
     res.send("Mensagem atualizada");
     
@@ -157,31 +158,31 @@ app.post("/status", async (req, res) => {
 });
 
 //Função que verifica periodicamente se usuários estão online:
-setInterval(async () => {
-  const now = Date.now();
-  const idleTimeLimit = now - 10000;
-  try {
-    const deletedObj = await db.collection("participants").find({lastStatus:{$lt:idleTimeLimit}}).toArray();
-    const idle = await db.collection("participants").deleteMany({ lastStatus: { $lt: idleTimeLimit } });
-    const numDeleted = idle.deletedCount;
-    const arrDeleted = [];
-    if (numDeleted !== 0) {
-      for (let usuario in deletedObj) {
-        const info = {
-          from: deletedObj[usuario].name,
-          to: "Todos",
-          text: "sai da sala...",
-          type: "status",
-          time: dayjs().format("HH:mm:ss"),
-        };
-        arrDeleted.push(info);
-      }
-      await db.collection("messages").insertMany(arrDeleted);
-    }    
-  } catch (err) {
-    console.log(err);
-  }
-}, 15000);
+// setInterval(async () => {
+//   const now = Date.now();
+//   const idleTimeLimit = now - 10000;
+//   try {
+//     const deletedObj = await db.collection("participants").find({lastStatus:{$lt:idleTimeLimit}}).toArray();
+//     const idle = await db.collection("participants").deleteMany({ lastStatus: { $lt: idleTimeLimit } });
+//     const numDeleted = idle.deletedCount;
+//     const arrDeleted = [];
+//     if (numDeleted !== 0) {
+//       for (let usuario in deletedObj) {
+//         const info = {
+//           from: deletedObj[usuario].name,
+//           to: "Todos",
+//           text: "sai da sala...",
+//           type: "status",
+//           time: dayjs().format("HH:mm:ss"),
+//         };
+//         arrDeleted.push(info);
+//       }
+//       await db.collection("messages").insertMany(arrDeleted);
+//     }    
+//   } catch (err) {
+//     console.log(err);
+//   }
+// }, 15000);
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
