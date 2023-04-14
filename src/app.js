@@ -13,61 +13,79 @@ app.use(express.json());
 dotenv.config();
 
 //Setup do banco de dados
-let db;
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
-mongoClient
-  .connect()
-  .then(() => (db = mongoClient.db()))
-  .catch((err) => console.log(err.message));
+try {
+  await mongoClient.connect();
+} catch (err) {
+  console.log(err.message);
+}
+const db = mongoClient.db();
 
 //Adiciona participante
-app.post("/participants", (req, res) => {
+app.post("/participants", async (req, res) => {
   const { name } = req.body;
-  db.collection("participants")
-    .insertOne({ name, lastStatus: Date.now() })
-    .catch((err) => console.log(err.message));
-  db.collection("messages")
+  try {
+    await db.collection("participants").insertOne({ name, lastStatus: Date.now() });
+    await db.collection("messages")
     .insertOne({
       from: name,
       to: "Todos",
       text: "entra na sala...",
       type: "status",
       time: dayjs().format("HH:mm:ss"),
-    })
-    .catch((err) => console.log(err.message));
-  res.sendStatus(201);
+    });
+    res.sendStatus(201);
+  } catch (err) {
+    console.log(err.message); //erro placeholder
+  } 
 });
 
 //Retorna participantes ativos
-app.get("/participants", (req, res) => {
-  db.collection("participants")
-    .find()
-    .toArray()
-    .then((participants) => res.status(200).send(participants))
-    .catch(res.status(500));
+app.get("/participants", async (req, res) => {
+  try {
+    const participants = await db.collection("participants").find().toArray();
+    res.status(200).send(participants);    
+  } catch (err) {
+    res.status(500);
+  }
 });
 
 //Posta mensagem
-app.post("/messages", (req, res) => {
+app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
-  const userFrom = req.headers.user;
-  db.collection("messages").insertOne({
-    from: userFrom,
-    to,
-    text,
-    type,
-    time: dayjs().format("HH:mm:ss"),
-  })
-  res.send(userFrom);
+  const user = req.headers.user;
+  try {
+    await db.collection("messages").insertOne({
+      from: user,
+      to,
+      text,
+      type,
+      time: dayjs().format("HH:mm:ss"),
+    })
+    res.send(user);
+  } catch (err) {
+    res.status(500); //erro placeholder
+  }  
 });
 
 //Retorna todas as mensagens
-app.get("/messages", (req, res) => {
-  db.collection("messages")
-    .find()
-    .toArray()
-    .then((messages) => res.status(200).send(messages))
-    .catch(res.status(500));
+app.get("/messages", async (req, res) => {
+  try {
+    const messages = await db.collection("messages").find().toArray();
+    res.status(200).send(messages);
+  } catch (err) {
+    res.status(500)
+  }  
+});
+
+//Posta status
+app.post("/status", async (req, res) => {
+  const user = req.headers.user;
+  try {
+    res.send(user);
+  } catch (err) {
+    console.log(err);
+  }
 });
 
 const PORT = 5000;
