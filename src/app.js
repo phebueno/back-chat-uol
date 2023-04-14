@@ -25,9 +25,11 @@ const db = mongoClient.db();
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
   try {
-    const usuario = await db.collection("participants").findOne({name:name});
+    const usuario = await db.collection("participants").findOne({ name });
     if (usuario) return res.sendStatus(409);
-    await db.collection("participants").insertOne({ name, lastStatus: Date.now() });
+    await db
+      .collection("participants")
+      .insertOne({ name, lastStatus: Date.now() });
     await db.collection("messages").insertOne({
       from: name,
       to: "Todos",
@@ -38,14 +40,14 @@ app.post("/participants", async (req, res) => {
     res.sendStatus(201);
   } catch (err) {
     console.log(err.message); //erro placeholder
-  } 
+  }
 });
 
 //Retorna participantes ativos
 app.get("/participants", async (req, res) => {
   try {
     const participants = await db.collection("participants").find().toArray();
-    res.status(200).send(participants);    
+    res.status(200).send(participants);
   } catch (err) {
     res.status(500);
   }
@@ -56,27 +58,46 @@ app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
   const user = req.headers.user;
   try {
+    const usuarioFrom = await db
+      .collection("participants")
+      .findOne({ name: user });
+    if (!usuarioFrom) return res.sendStatus(422); //adicionar outras validaçṍes por joi
     await db.collection("messages").insertOne({
       from: user,
       to,
       text,
       type,
       time: dayjs().format("HH:mm:ss"),
-    })
-    res.send(user);
+    });
+    res.sendStatus(201);
   } catch (err) {
     res.status(500); //erro placeholder
-  }  
+  }
 });
 
 //Retorna todas as mensagens
 app.get("/messages", async (req, res) => {
+  const user = req.headers.user;
+  const limit = Number(req.query.limit);
   try {
-    const messages = await db.collection("messages").find().toArray();
+    const messages = await db
+      .collection("messages")
+      .find(
+        {$or:[
+          { type: "message" },
+          { type: "status" },
+          { $or: [{ from: user }, { to: user }, { to: "Todos" }] }
+        ]}
+      )
+      .toArray();
+    if (limit){
+      //adicionar validação joi
+      return res.status(200).send(messages.slice(-limit));
+    }
     res.status(200).send(messages);
   } catch (err) {
-    res.status(500)
-  }  
+    res.status(500);
+  }
 });
 
 //Posta status
