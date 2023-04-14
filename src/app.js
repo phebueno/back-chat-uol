@@ -25,9 +25,10 @@ const db = mongoClient.db();
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
   try {
+    const usuario = await db.collection("participants").findOne({name:name});
+    if (usuario) return res.sendStatus(409);
     await db.collection("participants").insertOne({ name, lastStatus: Date.now() });
-    await db.collection("messages")
-    .insertOne({
+    await db.collection("messages").insertOne({
       from: name,
       to: "Todos",
       text: "entra na sala...",
