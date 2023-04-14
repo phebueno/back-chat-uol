@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 
@@ -103,8 +103,14 @@ app.get("/messages", async (req, res) => {
 //Posta status
 app.post("/status", async (req, res) => {
   const user = req.headers.user;
+  const userUpdate = {name:user, lastStatus:Date.now()};
+  user
   try {
-    res.send(user);
+    //if (!user) return res.sendStatus(404);
+    const result = await db.collection("participants").findOne({name:user});
+    if (!result) return res.sendStatus(404); //Caso user seja vazio, também retornará vazio
+    const asd = await db.collection("participants").updateOne({name:user},{ $set: userUpdate});
+    res.sendStatus(200);
   } catch (err) {
     console.log(err);
   }
