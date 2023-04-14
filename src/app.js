@@ -82,15 +82,15 @@ app.get("/messages", async (req, res) => {
   try {
     const messages = await db
       .collection("messages")
-      .find(
-        {$or:[
+      .find({
+        $or: [
           { type: "message" },
           { type: "status" },
-          { $or: [{ from: user }, { to: user }, { to: "Todos" }] }
-        ]}
-      )
+          { $or: [{ from: user }, { to: user }, { to: "Todos" }] },
+        ],
+      })
       .toArray();
-    if (limit){
+    if (limit) {
       //adicionar validação joi
       return res.status(200).send(messages.slice(-limit));
     }
@@ -103,18 +103,49 @@ app.get("/messages", async (req, res) => {
 //Posta status
 app.post("/status", async (req, res) => {
   const user = req.headers.user;
-  const userUpdate = {name:user, lastStatus:Date.now()};
-  user
+  const userUpdate = { name: user, lastStatus: Date.now() };
+  user;
   try {
     //if (!user) return res.sendStatus(404);
-    const result = await db.collection("participants").findOne({name:user});
+    const result = await db.collection("participants").findOne({ name: user });
     if (!result) return res.sendStatus(404); //Caso user seja vazio, também retornará vazio
-    const asd = await db.collection("participants").updateOne({name:user},{ $set: userUpdate});
+    const asd = await db
+      .collection("participants")
+      .updateOne({ name: user }, { $set: userUpdate });
     res.sendStatus(200);
   } catch (err) {
     console.log(err);
   }
 });
+
+//Função que verifica periodicamente se usuários estão online:
+setInterval(async () => {
+  const now = Date.now();
+  const idleTimeLimit = now - 10000;
+  try {
+    const deletedObj = await db.collection("participants").find({lastStatus:{$lt:idleTimeLimit}}).toArray();
+    const idle = await db.collection("participants").deleteMany({ lastStatus: { $lt: idleTimeLimit } });
+    const numDeleted = idle.deletedCount;
+    const arrDeleted = [];
+    if (numDeleted !== 0) {
+      for (let usuario in deletedObj) {
+        const info = {
+          from: deletedObj[usuario].name,
+          to: "Todos",
+          text: "sai da sala...",
+          type: "status",
+          time: dayjs().format("HH:mm:ss"),
+        };
+        arrDeleted.push(info);
+      }
+      await db.collection("messages").insertMany(arrDeleted);
+    }
+    console.log(arrDeleted);
+    console.log(idle);
+  } catch (err) {
+    console.log(err);
+  }
+}, 15000);
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
