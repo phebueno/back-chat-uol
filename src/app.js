@@ -100,6 +100,44 @@ app.get("/messages", async (req, res) => {
   }
 });
 
+//Deleta uma mensagem por ID
+app.delete("/messages/:id", async (req, res)=>{
+  const user = req.headers.user;
+  const id = req.params.id;
+  try {
+    const deletedObj = await db.collection("messages").findOne({ _id: new ObjectId(id) });
+    if(deletedObj.from !== user) return res.sendStatus(401);
+    const result = await db.collection("messages").deleteOne({ _id: new ObjectId(id) });
+    if(!result) return res.sendStatus(404);
+    res.sendStatus(204);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+//Edita uma mensagem por ID
+app.put("/messages/:id", async (req, res)=>{
+  const user = req.headers.user;
+  const id = req.params.id;
+  const { to, text, type } = req.body;
+  const userUpdate = {from:user,to,text,type}
+  try {
+    const usuarioFrom = await db
+      .collection("participants")
+      .findOne({ name: user });
+    if (!usuarioFrom) return res.sendStatus(422); //adicionar outras validaçṍes por joi
+    const updateObj = await db.collection("messages").findOne({ _id: new ObjectId(id) });
+    if(updateObj.from !== user) return res.sendStatus(401);
+    const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) },{ $set: userUpdate });
+    if(!result) return res.sendStatus(404);
+    console.log(updateObj);
+    res.send("Mensagem atualizada");
+    
+  } catch (err) {
+        console.log(err);
+  }
+});
+
 //Posta status
 app.post("/status", async (req, res) => {
   const user = req.headers.user;
@@ -139,9 +177,7 @@ setInterval(async () => {
         arrDeleted.push(info);
       }
       await db.collection("messages").insertMany(arrDeleted);
-    }
-    console.log(arrDeleted);
-    console.log(idle);
+    }    
   } catch (err) {
     console.log(err);
   }
