@@ -3,6 +3,7 @@ import cors from "cors";
 import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
+import joi from "joi";
 
 //Criação do servidor
 const app = express();
@@ -21,9 +22,30 @@ try {
 }
 const db = mongoClient.db();
 
+//Validações
+const userSchema = joi.object({
+  name: joi.string().required()
+});  
+
+const messageSchema = joi.object({
+  to: joi.string().required(),
+  text: joi.string().required(),
+  type: joi.valid('message','private_message').required()    
+});
+
+const messageLimitSchema = joi.object({
+  limit: joi.number().integer().min(1)
+});
+
 //Adiciona participante
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
+  const validation = userSchema.validate(req.body);
+  if (validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    return res.sendStatus(422);
+  }
+
   try {
     const usuario = await db.collection("participants").findOne({ name });
     if (usuario) return res.sendStatus(409);
@@ -56,12 +78,18 @@ app.get("/participants", async (req, res) => {
 //Posta mensagem
 app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
-  const user = req.headers.user;
+  const user = req.headers.user; 
+  const validation = messageSchema.validate(req.body);
+  if (validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    return res.sendStatus(422);
+  }
+
   try {
     const usuarioFrom = await db
       .collection("participants")
       .findOne({ name: user });
-    if (!usuarioFrom) return res.sendStatus(422); //adicionar outras validaçṍes por joi
+    if (!usuarioFrom) return res.sendStatus(422);
     await db.collection("messages").insertOne({
       from: user,
       to,
@@ -79,6 +107,13 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", async (req, res) => {
   const user = req.headers.user;
   const limit = Number(req.query.limit);
+
+  const validation = messageLimitSchema.validate(req.query);
+  if (validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    return res.sendStatus(422);
+  }
+
   try {
     const messages = await db
       .collection("messages")
