@@ -49,7 +49,7 @@ app.post("/participants", async (req, res) => {
   const validation = userSchema.validate(req.body);
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
-    return res.sendStatus(422);
+    return res.status(422).send(errors);
   }
   name = dataSanitize(name);
 
@@ -87,10 +87,10 @@ app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
   const user = req.headers.user;
 
-  const validation = messageSchema.validate(req.body);
+  const validation = messageSchema.validate(req.body, {abortEarly:false});
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
-    return res.sendStatus(422);
+    return res.status(422).send(errors);
   }
 
   try {
@@ -116,10 +116,10 @@ app.get("/messages", async (req, res) => {
   const user = req.headers.user;
   const limit = Number(req.query.limit);
 
-  const validation = messageLimitSchema.validate(req.query);
+  const validation = messageLimitSchema.validate(req.query, {abortEarly:false});
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
-    return res.sendStatus(422);
+    return res.status(422).send(errors);
   }
 
   try {
@@ -159,7 +159,7 @@ app.delete("/messages/:id", async (req, res) => {
     //if(!result) return res.sendStatus(404);
     res.sendStatus(200);
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
 });
 
@@ -170,10 +170,10 @@ app.put("/messages/:id", async (req, res) => {
   const { to, text, type } = req.body;
   const userUpdate = { from: user, to, text: dataSanitize(text), type };
 
-  const validation = messageSchema.validate(req.body);
+  const validation = messageSchema.validate(req.body, {abortEarly:false});
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
-    return res.sendStatus(422);
+    return res.status(422).send(errors);
   }
 
   try {
@@ -189,10 +189,9 @@ app.put("/messages/:id", async (req, res) => {
     const result = await db
       .collection("messages")
       .updateOne({ _id: new ObjectId(id) }, { $set: userUpdate });
-    console.log(updateObj);
     res.send("Mensagem atualizada");
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
 });
 
@@ -210,7 +209,7 @@ app.post("/status", async (req, res) => {
       .updateOne({ name: user }, { $set: userUpdate });
     res.sendStatus(200);
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
 });
 
@@ -242,7 +241,7 @@ setInterval(async () => {
       await db.collection("messages").insertMany(arrDeleted);
     }
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
 }, 15000);
 
