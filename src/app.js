@@ -4,6 +4,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 import joi from "joi";
+import { stripHtml } from "string-strip-html";
 
 //Criação do servidor
 const app = express();
@@ -37,9 +38,14 @@ const messageLimitSchema = joi.object({
   limit: joi.number().integer().min(1)
 });
 
+//Sanitização de dados
+function dataSanitize(data){
+  let cleanData = stripHtml(data).result.trim();
+  return cleanData;
+}
 //Adiciona participante
 app.post("/participants", async (req, res) => {
-  const { name } = req.body;
+  const name = dataSanitize(req.body.name);
   const validation = userSchema.validate(req.body);
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
@@ -79,6 +85,7 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
   const user = req.headers.user; 
+
   const validation = messageSchema.validate(req.body);
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
@@ -93,7 +100,7 @@ app.post("/messages", async (req, res) => {
     await db.collection("messages").insertOne({
       from: user,
       to,
-      text,
+      text:dataSanitize(text),
       type,
       time: dayjs().format("HH:mm:ss"),
     });
@@ -156,7 +163,14 @@ app.put("/messages/:id", async (req, res)=>{
   const user = req.headers.user;
   const id = req.params.id;
   const { to, text, type } = req.body;
-  const userUpdate = {from:user,to,text,type}
+  const userUpdate = {from:user,to,text:dataSanitize(text),type}
+
+  const validation = messageSchema.validate(req.body);
+  if (validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    return res.sendStatus(422);
+  }
+
   try {
     const usuarioFrom = await db
       .collection("participants")
