@@ -45,13 +45,13 @@ function dataSanitize(data) {
 }
 //Adiciona participante
 app.post("/participants", async (req, res) => {
-  let { name } = req.body;
-  name = dataSanitize(name);
+  let { name } = req.body;  
   const validation = userSchema.validate(req.body);
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
     return res.sendStatus(422);
   }
+  name = dataSanitize(name);
 
   try {
     const usuario = await db.collection("participants").findOne({ name });
