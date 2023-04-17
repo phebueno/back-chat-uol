@@ -25,27 +25,27 @@ const db = mongoClient.db();
 
 //Validações
 const userSchema = joi.object({
-  name: joi.string().required()
-});  
+  name: joi.string().required(),
+});
 
 const messageSchema = joi.object({
   to: joi.string().required(),
   text: joi.string().required(),
-  type: joi.valid('message','private_message').required()    
+  type: joi.valid("message", "private_message").required(),
 });
 
 const messageLimitSchema = joi.object({
-  limit: joi.number().integer().min(1)
+  limit: joi.number().integer().min(1),
 });
 
 //Sanitização de dados
-function dataSanitize(data){
+function dataSanitize(data) {
   let cleanData = stripHtml(data).result.trim();
   return cleanData;
 }
 //Adiciona participante
 app.post("/participants", async (req, res) => {
-  const name = dataSanitize(req.body.name);
+  const { name } = req.body;
   const validation = userSchema.validate(req.body);
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
@@ -53,13 +53,13 @@ app.post("/participants", async (req, res) => {
   }
 
   try {
-    const usuario = await db.collection("participants").findOne({ name });
+    const usuario = await db.collection("participants").findOne({ name:dataSanitize(req.body.name) });
     if (usuario) return res.sendStatus(409);
     await db
       .collection("participants")
       .insertOne({ name, lastStatus: Date.now() });
     await db.collection("messages").insertOne({
-      from: name,
+      from: dataSanitize(req.body.name),
       to: "Todos",
       text: "entra na sala...",
       type: "status",
@@ -84,7 +84,7 @@ app.get("/participants", async (req, res) => {
 //Posta mensagem
 app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
-  const user = req.headers.user; 
+  const user = req.headers.user;
 
   const validation = messageSchema.validate(req.body);
   if (validation.error) {
@@ -100,7 +100,7 @@ app.post("/messages", async (req, res) => {
     await db.collection("messages").insertOne({
       from: user,
       to,
-      text:dataSanitize(text),
+      text: dataSanitize(text),
       type,
       time: dayjs().format("HH:mm:ss"),
     });
@@ -143,14 +143,18 @@ app.get("/messages", async (req, res) => {
 });
 
 //Deleta uma mensagem por ID
-app.delete("/messages/:id", async (req, res)=>{
+app.delete("/messages/:id", async (req, res) => {
   const user = req.headers.user;
   const id = req.params.id;
   try {
-    const deletedObj = await db.collection("messages").findOne({ _id: new ObjectId(id) });
-    if(!deletedObj) return res.sendStatus(404);
-    if(deletedObj.from !== user) return res.sendStatus(401);
-    const result = await db.collection("messages").deleteOne({ _id: new ObjectId(id) });
+    const deletedObj = await db
+      .collection("messages")
+      .findOne({ _id: new ObjectId(id) });
+    if (!deletedObj) return res.sendStatus(404);
+    if (deletedObj.from !== user) return res.sendStatus(401);
+    const result = await db
+      .collection("messages")
+      .deleteOne({ _id: new ObjectId(id) });
     //if(!result) return res.sendStatus(404);
     res.sendStatus(204);
   } catch (err) {
@@ -159,11 +163,11 @@ app.delete("/messages/:id", async (req, res)=>{
 });
 
 //Edita uma mensagem por ID
-app.put("/messages/:id", async (req, res)=>{
+app.put("/messages/:id", async (req, res) => {
   const user = req.headers.user;
   const id = req.params.id;
   const { to, text, type } = req.body;
-  const userUpdate = {from:user,to,text:dataSanitize(text),type}
+  const userUpdate = { from: user, to, text: dataSanitize(text), type };
 
   const validation = messageSchema.validate(req.body);
   if (validation.error) {
@@ -176,15 +180,18 @@ app.put("/messages/:id", async (req, res)=>{
       .collection("participants")
       .findOne({ name: user });
     if (!usuarioFrom) return res.sendStatus(422); //adicionar outras validaçṍes por joi
-    const updateObj = await db.collection("messages").findOne({ _id: new ObjectId(id) });
-    if(!updateObj) return res.sendStatus(404);    
-    if(updateObj.from !== user) return res.sendStatus(401);
-    const result = await db.collection("messages").updateOne({ _id: new ObjectId(id) },{ $set: userUpdate });
+    const updateObj = await db
+      .collection("messages")
+      .findOne({ _id: new ObjectId(id) });
+    if (!updateObj) return res.sendStatus(404);
+    if (updateObj.from !== user) return res.sendStatus(401);
+    const result = await db
+      .collection("messages")
+      .updateOne({ _id: new ObjectId(id) }, { $set: userUpdate });
     console.log(updateObj);
     res.send("Mensagem atualizada");
-    
   } catch (err) {
-        console.log(err);
+    console.log(err);
   }
 });
 
@@ -211,8 +218,13 @@ setInterval(async () => {
   const now = Date.now();
   const idleTimeLimit = now - 10000;
   try {
-    const deletedObj = await db.collection("participants").find({lastStatus:{$lt:idleTimeLimit}}).toArray();
-    const idle = await db.collection("participants").deleteMany({ lastStatus: { $lt: idleTimeLimit } });
+    const deletedObj = await db
+      .collection("participants")
+      .find({ lastStatus: { $lt: idleTimeLimit } })
+      .toArray();
+    const idle = await db
+      .collection("participants")
+      .deleteMany({ lastStatus: { $lt: idleTimeLimit } });
     const numDeleted = idle.deletedCount;
     const arrDeleted = [];
     if (numDeleted !== 0) {
@@ -227,7 +239,7 @@ setInterval(async () => {
         arrDeleted.push(info);
       }
       await db.collection("messages").insertMany(arrDeleted);
-    }    
+    }
   } catch (err) {
     console.log(err);
   }
