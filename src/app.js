@@ -156,7 +156,7 @@ app.delete("/messages/:id", async (req, res) => {
       .collection("messages")
       .deleteOne({ _id: new ObjectId(id) });
     //if(!result) return res.sendStatus(404);
-    res.sendStatus(204);
+    res.sendStatus(200);
   } catch (err) {
     console.log(err);
   }
