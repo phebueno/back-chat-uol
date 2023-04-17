@@ -45,7 +45,8 @@ function dataSanitize(data) {
 }
 //Adiciona participante
 app.post("/participants", async (req, res) => {
-  const { name } = req.body;
+  let { name } = req.body;
+  name = dataSanitize(name);
   const validation = userSchema.validate(req.body);
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
@@ -53,13 +54,13 @@ app.post("/participants", async (req, res) => {
   }
 
   try {
-    const usuario = await db.collection("participants").findOne({ name:dataSanitize(req.body.name) });
+    const usuario = await db.collection("participants").findOne({ name });
     if (usuario) return res.sendStatus(409);
     await db
       .collection("participants")
       .insertOne({ name, lastStatus: Date.now() });
     await db.collection("messages").insertOne({
-      from: dataSanitize(req.body.name),
+      from: name,
       to: "Todos",
       text: "entra na sala...",
       type: "status",
