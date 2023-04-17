@@ -158,31 +158,31 @@ app.post("/status", async (req, res) => {
 });
 
 //Função que verifica periodicamente se usuários estão online:
-// setInterval(async () => {
-//   const now = Date.now();
-//   const idleTimeLimit = now - 10000;
-//   try {
-//     const deletedObj = await db.collection("participants").find({lastStatus:{$lt:idleTimeLimit}}).toArray();
-//     const idle = await db.collection("participants").deleteMany({ lastStatus: { $lt: idleTimeLimit } });
-//     const numDeleted = idle.deletedCount;
-//     const arrDeleted = [];
-//     if (numDeleted !== 0) {
-//       for (let usuario in deletedObj) {
-//         const info = {
-//           from: deletedObj[usuario].name,
-//           to: "Todos",
-//           text: "sai da sala...",
-//           type: "status",
-//           time: dayjs().format("HH:mm:ss"),
-//         };
-//         arrDeleted.push(info);
-//       }
-//       await db.collection("messages").insertMany(arrDeleted);
-//     }    
-//   } catch (err) {
-//     console.log(err);
-//   }
-// }, 15000);
+setInterval(async () => {
+  const now = Date.now();
+  const idleTimeLimit = now - 10000;
+  try {
+    const deletedObj = await db.collection("participants").find({lastStatus:{$lt:idleTimeLimit}}).toArray();
+    const idle = await db.collection("participants").deleteMany({ lastStatus: { $lt: idleTimeLimit } });
+    const numDeleted = idle.deletedCount;
+    const arrDeleted = [];
+    if (numDeleted !== 0) {
+      for (let usuario in deletedObj) {
+        const info = {
+          from: deletedObj[usuario].name,
+          to: "Todos",
+          text: "sai da sala...",
+          type: "status",
+          time: dayjs().format("HH:mm:ss"),
+        };
+        arrDeleted.push(info);
+      }
+      await db.collection("messages").insertMany(arrDeleted);
+    }    
+  } catch (err) {
+    console.log(err);
+  }
+}, 15000);
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
